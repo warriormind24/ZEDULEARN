@@ -5,6 +5,15 @@ import './workspace.css'
 type Resource = { id: string; title: string; description: string; tags: string[]; resourceUrl: string; downloadUrl: string }
 type CatalogResponse = { resources: Resource[]; total: number; nextPage: number | null }
 
+async function readApiJson<T>(response: Response): Promise<T> {
+  const body = await response.text()
+  try {
+    return JSON.parse(body) as T
+  } catch {
+    throw new Error('The app server returned a web page instead of API data. Restart both servers with npm run dev and try again.')
+  }
+}
+
 const levels = [
   { value: 'ece', label: 'Early childhood' },
   { value: 'primary', label: 'Primary school' },
@@ -66,7 +75,7 @@ function App() {
     if (search) params.set('q', search)
     fetch(`/api/catalog?${params}`, { signal: controller.signal })
       .then(async (response) => {
-        const data = await response.json() as CatalogResponse & { error?: string }
+        const data = await readApiJson<CatalogResponse & { error?: string }>(response)
         if (!response.ok) throw new Error(data.error ?? 'Could not load curriculum resources.')
         setResources(data.resources)
         setTotal(data.total)
@@ -85,7 +94,7 @@ function App() {
   }, [level, grade, search, page, requestKey])
 
   useEffect(() => {
-    fetch('/api/status').then((response) => response.json())
+    fetch('/api/status').then((response) => readApiJson<{ translationReady?: boolean }>(response))
       .then((data: { translationReady?: boolean }) => setTranslationReady(Boolean(data.translationReady)))
       .catch(() => setTranslationReady(false))
   }, [])
@@ -115,7 +124,7 @@ function App() {
     if (search) params.set('q', search)
     try {
       const response = await fetch(`/api/catalog?${params}`)
-      const data = await response.json() as CatalogResponse & { error?: string }
+      const data = await readApiJson<CatalogResponse & { error?: string }>(response)
       if (!response.ok) throw new Error(data.error ?? 'Could not load more resources.')
       setResources((current) => [...current, ...data.resources.filter((item) => !current.some((existing) => existing.id === item.id))])
       setNextPage(data.nextPage)
@@ -136,7 +145,7 @@ function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: passage.trim(), language }),
       })
-      const data = await response.json() as { translation?: string; error?: string }
+      const data = await readApiJson<{ translation?: string; error?: string }>(response)
       if (!response.ok) throw new Error(data.error ?? 'Translation failed. Please try again.')
       setTranslation(data.translation ?? '')
     } catch (error) {
