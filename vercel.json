@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "buildCommand": "cd app && npm run build",
+  "outputDirectory": "app/dist",
+  "devCommand": "cd app && npm run dev",
+  "installCommand": "cd app && npm install",
+  "framework": "vite",
+  "functions": {
+    "app/server/index.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "app/server/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app/dist/$1"
+    }
+  ]
+}
